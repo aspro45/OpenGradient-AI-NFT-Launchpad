@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI NFT Launchpad</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-blur"></div>
+    <div class="container">
+
+        <div class="guide-panel glassmorphism">
+            <h2>🤖 How It Works</h2>
+            <p>Powered by <strong>OpenGradient</strong>, AI inference inside a Trusted Execution Environment (TEE) on a
+                decentralized network.</p>
+
+            <div class="step">
+                <span class="step-num">1</span>
+                <div>
+                    <strong>OpenGradient TEE Brain</strong>
+                    <p>Your messages are processed by <em>GPT-4o</em> running natively on OpenGradient via the
+                        <code>opengradient</code> SDK.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-num">2</span>
+                <div>
+                    <strong>ReAct Agent Loop</strong>
+                    <p>The agent reasons, calls real Web3 tools, reads blockchain results, and replies, all in one
+                        streaming response.</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-num">3</span>
+                <div>
+                    <strong>On-Chain Actions</strong>
+                    <p>Payments verified on <em>Base Sepolia</em>. NFT mints and contract deployments are real ERC-721
+                        transactions.</p>
+                </div>
+            </div>
+
+            <div class="dev-credit">
+                <p>⚡ Built by <a href="https://x.com/ASPRO_22" target="_blank">@ASPRO_22</a></p>
+            </div>
+        </div>
+
+        <div class="chat-panel glassmorphism" style="flex: 2;">
+            <div class="chat-header">
+                <div class="status-indicator"></div>
+                <h2>AI Launchpad Agent</h2>
+            </div>
+
+            <div class="chat-history" id="chat-history">
+                <div class="message bot-msg">
+                    <pre>I am the OpenGradient AI Launchpad! Ask me about available collections (like ASPRO) or give me a transaction hash if you've already paid the mint fee.</pre>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off" />
+                <button id="send-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
