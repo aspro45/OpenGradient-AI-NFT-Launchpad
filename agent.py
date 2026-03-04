@@ -169,7 +169,7 @@ def chat_with_agent(user_input: str, conversation_history: list):
         MAX_ITERATIONS = 3
         for _ in range(MAX_ITERATIONS):
             chat_stream = client.llm.chat(
-                model=og.TEE_LLM.GPT_4O,
+                model=og.TEE_LLM.GPT_5,
                 messages=messages,
                 tools=sdk_tools,
                 x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH,
