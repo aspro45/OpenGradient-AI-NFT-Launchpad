@@ -31,10 +31,42 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
         
     from flask import Response, stream_with_context
+    import asyncio
+    
     def generate():
         try:
-            for chunk in chat_with_agent(user_input, history):
-                yield chunk
+            # chat_with_agent is an async generator, we need to iterate it using asyncio
+            # Since Flask view is synchronous, we create an event loop to run the async iteration
+            async def run_async_generator():
+                chunks = []
+                async for chunk in chat_with_agent(user_input, history):
+                    chunks.append(chunk)
+                return chunks
+                
+            # For streaming in a synchronous flask app, we can use run_coroutine_threadsafe or run_until_complete
+            # A simple synchronous block to yield chunks as they arrive is harder without async flask features.
+            # Instead, we will simulate the stream by awaiting the whole thing and yielding parts, 
+            # or yielding them as they are awaited. 
+            # Note: For real streaming in Flask, one should use ASGI (e.g., Quart/FastAPI).
+            # To keep it working in WSGI Flask, we can just consume the generator synchronously, wrapped in asyncio.run
+            
+            async def consume_stream():
+                async for chunk in chat_with_agent(user_input, history):
+                    yield chunk
+
+            # A helper to iterate over async generator in a sync environment
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            gen = chat_with_agent(user_input, history)
+            while True:
+                try:
+                    chunk = loop.run_until_complete(gen.__anext__())
+                    yield chunk
+                except StopAsyncIteration:
+                    break
+            loop.close()
+            
         except Exception as e:
             yield f"\n[Error]: {str(e)}"
             

@@ -1,7 +1,7 @@
-import sys
+import asyncio
 from agent import chat_with_agent
 
-def main():
+async def async_main():
     print("=========================================")
     print("🚀 Welcome to the AI NFT Launchpad 🚀")
     print("Type 'exit' or 'quit' to leave.")
@@ -20,15 +20,20 @@ def main():
                 continue
                 
             print("\nLaunchpad Agent is thinking...")
-            response = chat_with_agent(user_input, conversation_history)
+            print("Launchpad Agent: ", end="", flush=True)
             
-            print(f"\nLaunchpad Agent: {response}")
+            async for chunk in chat_with_agent(user_input, conversation_history):
+                print(chunk, end="", flush=True)
+            print()
             
         except KeyboardInterrupt:
             print("\nLaunchpad Agent: Goodbye! 👋")
             break
         except Exception as e:
             print(f"\n[Error connecting to agent]: {e}")
+
+def main():
+    asyncio.run(async_main())
 
 if __name__ == "__main__":
     main()
