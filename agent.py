@@ -155,11 +155,11 @@ def chat_with_agent(user_input: str, conversation_history: list):
         return
         
     try:
-        # 1. Initialize OpenGradient Native Client
-        client = og.Client(private_key=private_key)
+        # 1. Initialize OpenGradient LLM Client
+        llm = og.LLM(private_key=private_key)
         
         # 1a. Ensure x402 Permit2 Token Approvals 
-        client.llm.ensure_opg_approval(opg_amount=1)
+        llm.ensure_opg_approval(opg_amount=5.0)
         
         messages = [{"role": "system", "content": get_system_prompt()}]
         for msg in conversation_history:
@@ -168,11 +168,11 @@ def chat_with_agent(user_input: str, conversation_history: list):
         
         MAX_ITERATIONS = 3
         for _ in range(MAX_ITERATIONS):
-            chat_stream = client.llm.chat(
+            chat_stream = llm.chat(
                 model=og.TEE_LLM.GPT_4_1_2025_04_14,
                 messages=messages,
                 tools=sdk_tools,
-                x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH,
+                x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED,
                 stream=True
             )
             
