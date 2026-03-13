@@ -168,7 +168,7 @@ async def chat_with_agent(user_input: str, conversation_history: list):
         
         MAX_ITERATIONS = 3
         for _ in range(MAX_ITERATIONS):
-            chat_stream = llm.chat(
+            chat_stream = await llm.chat(
                 model=og.TEE_LLM.GPT_4_1_2025_04_14,
                 messages=messages,
                 tools=sdk_tools,
