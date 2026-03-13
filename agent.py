@@ -148,7 +148,7 @@ sdk_tools = [
     }
 ]
 
-def chat_with_agent(user_input: str, conversation_history: list):
+async def chat_with_agent(user_input: str, conversation_history: list):
     private_key = os.environ.get("AGENT_PRIVATE_KEY")
     if not private_key:
         yield "🧠 *System Alert: I am currently running in 'Mock Mode' because my creator hasn't added the AGENT_PRIVATE_KEY environment variable to Vercel yet! Once they add it, I will be a fully-functional AI using OpenGradient's native SDK!*"
@@ -181,7 +181,7 @@ def chat_with_agent(user_input: str, conversation_history: list):
             content_buffer = ""
             
             # 4. Handle Streaming Response
-            for chunk in chat_stream:
+            async for chunk in chat_stream:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
