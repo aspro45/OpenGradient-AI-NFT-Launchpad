@@ -1,4 +1,6 @@
 Flask
 web3
-opengradient
+opengradient>=0.8.0
 langchain-core
+requests
+python-dotenv

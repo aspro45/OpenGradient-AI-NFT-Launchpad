@@ -129,18 +129,18 @@ sdk_tools = [
     }
 ]
 
-def chat_with_agent(user_input: str, conversation_history: list):
+async def chat_with_agent(user_input: str, conversation_history: list):
     private_key = os.environ.get("AGENT_PRIVATE_KEY")
     if not private_key:
         yield "🧠 *System Alert: I am currently running in 'Mock Mode' because my creator hasn't added the AGENT_PRIVATE_KEY environment variable to Vercel yet! Once they add it, I will be a fully-functional AI using OpenGradient's native SDK!*"
         return
         
     try:
-        # 1. Initialize OpenGradient Native Client
-        client = og.Client(private_key=private_key)
+        # 1. Initialize OpenGradient Native Client using the latest SDK
+        llm = og.LLM(private_key=private_key)
         
         # 1a. Ensure x402 Permit2 Token Approvals 
-        client.llm.ensure_opg_approval(opg_amount=50.0)
+        llm.ensure_opg_approval(opg_amount=50.0)
         
         messages = [{"role": "system", "content": get_system_prompt()}]
         for msg in conversation_history:
@@ -149,7 +149,7 @@ def chat_with_agent(user_input: str, conversation_history: list):
         
         MAX_ITERATIONS = 3
         for _ in range(MAX_ITERATIONS):
-            chat_stream = client.llm.chat(
+            chat_stream = await llm.chat(
                 model=og.TEE_LLM.GPT_4_1_2025_04_14,
                 messages=messages,
                 tools=sdk_tools,
@@ -162,7 +162,7 @@ def chat_with_agent(user_input: str, conversation_history: list):
             content_buffer = ""
             
             # 4. Handle Streaming Response
-            for chunk in chat_stream:
+            async for chunk in chat_stream:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
