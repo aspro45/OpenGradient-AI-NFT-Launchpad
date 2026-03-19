@@ -4,7 +4,7 @@ import re
 
 # Local module imports
 from nft_data import get_collection_info, register_new_collection, NFT_COLLECTIONS
-from blockchain_utils import AGENT_WALLET, DEPLOYMENT_FEE_ETH, verify_payment_transaction, execute_mint_nft
+from blockchain_utils import AGENT_WALLET, verify_payment_transaction, execute_mint_nft
 
 import opengradient as og
 
@@ -28,51 +28,41 @@ def get_payment_instructions(collection_name: str) -> str:
     )
 
 def verify_payment_and_mint_nft(transaction_hash: str, user_wallet_address: str, collection_name: str) -> str:
-    """Verifies a mint payment on-chain and executes the NFT mint."""
+    """
+    Use this ONLY AFTER the user gives you a transaction hash. 
+    It checks the blockchain to verify the payment and then mints the NFT.
+    """
     info_json = get_collection_info(collection_name)
     info = json.loads(info_json)
     if "error" in info:
-        return info_json
-    expected_amount = info.get("gas_estimate_eth", 0.005) if info.get("is_free_mint") else info["price_eth"]
-    verify_result = verify_payment_transaction(transaction_hash, expected_amount)
+        return info["error"]
+        
+    expected_eth = info["price_eth"] + info["gas_estimate_eth"]
+    
+    # 1. Verify Payment
+    verify_result = verify_payment_transaction(transaction_hash, expected_eth)
+    
     if "Failed" in verify_result or "Error" in verify_result:
-        return verify_result
-    mint_result = execute_mint_nft(user_wallet_address, collection_name)
-    return f"Verification: {verify_result}\nMinting: {mint_result}"
-
-def get_deployment_instructions() -> str:
-    """Returns the deployment fee and the wallet address the user must send it to."""
-    return json.dumps({
-        "deployment_fee_eth": DEPLOYMENT_FEE_ETH,
-        "send_to_wallet": AGENT_WALLET,
-        "instructions": f"To deploy your collection, please send {DEPLOYMENT_FEE_ETH} ETH to {AGENT_WALLET} on Base Sepolia. Then share your transaction hash with me along with all collection details."
-    })
-
-def verify_deployment_payment_and_deploy(transaction_hash: str, collection_name: str, symbol: str, price_eth: float, supply: int, description: str) -> str:
-    """Verifies the deployment fee payment and, upon success, deploys the real ERC721 contract."""
-    verify_result = verify_payment_transaction(transaction_hash, DEPLOYMENT_FEE_ETH)
-    if "Failed" in verify_result or "Error" in verify_result:
-        return json.dumps({"error": f"Deployment fee not confirmed: {verify_result}"})
-    return register_new_collection(collection_name, symbol, price_eth, supply, description)
+        return f"Payment Verification Failed:\n{verify_result}\n\nI cannot mint the NFT until the payment is confirmed."
+        
+    # 2. Mint NFT (Real)
+    mint_result = execute_mint_nft(user_wallet_address, info['name'])
+    
+    return f"Success! Verification passed:\n{verify_result}\n\nMinting Result:\n{mint_result}"
 
 def get_system_prompt():
     available_collections = ", ".join(NFT_COLLECTIONS.keys())
     return f"""
-    You are the OpenGradient NFT Launchpad AI Agent. Your job is to help users mint NFTs, and deploy new NFT collections.
-    Follow this strict workflow for MINTING:
+    You are the OpenGradient NFT Launchpad AI Agent. Your job is to help users mint NFTs, and optionally deploy new NFT collections.
+    Follow this strict workflow:
     1. When a user asks about a collection, use `check_collection_availability` to see if it exists.
-    2. If they want to mint, use `get_payment_instructions` to find out how much they owe. Tell the user the cost and the wallet address, then ask for their transaction hash.
-    3. When the user provides a transaction hash and their wallet address, use `verify_payment_and_mint_nft` to verify and execute the mint.
-    4. Report the final success or failure, including any blockchain transaction hashes, back to the user.
-
-    Follow this strict workflow for DEPLOYING A NEW COLLECTION:
-    A. First, collect all details from the user: collection name, ticker symbol, mint price in ETH, total supply, and a description.
-    B. THEN call `get_deployment_instructions` to get the required deployment fee and wallet address. Tell the user exactly how much ETH to send and where, and ask for their payment transaction hash.
-    C. Once the user provides the payment transaction hash, call `verify_deployment_payment_and_deploy` with all the details. This verifies the fee and deploys the REAL smart contract on the blockchain.
-    D. Report the real deployed contract address and the BaseScan link to the user.
+    2. If they want to mint, use `get_payment_instructions` to find out how much they owe and the agent's wallet address. Tell the user this information clearly and ask for their transaction hash once they've paid.
+    3. When the user provides a transaction hash and their wallet address, use `verify_payment_and_mint_nft` to verify the payment on the blockchain and execute the mint.
+    4. If a user asks to deploy or create a NEW collection, ask them for the name, a short ticker symbol, the mint price in ETH, the supply (number), and a description. Then use `deploy_custom_collection` to deploy it to the Launchpad!
+    5. Report the final success or failure back to the user based on the tool's result.
 
     CRITICAL KNOWLEDGE: You manage the following Official NFT Collections on this Launchpad: {available_collections}. 
-    DO NOT recommend or mention other NFTs like CryptoPunks or Bored Apes. If a user asks about something that isn't listed, offer to deploy it for them!
+    DO NOT recommend or mention any other NFTs like CryptoPunks or Bored Apes. Only recommend the ones listed above! If they want to mint something else, offer to deploy it for them!
     
     You are a real AI agent! Be extremely friendly, helpful, and conversational. Use emojis! If a collection is a "free mint", emphasize that they only need to pay for gas! You have real tools that interact with the blockchain, so act like a smart Crypto Launchpad Assistant.
     """
@@ -107,7 +97,7 @@ sdk_tools = [
         "type": "function",
         "function": {
             "name": "verify_payment_and_mint_nft",
-            "description": "Use this ONLY AFTER the user gives you a transaction hash for their MINT payment. It checks the blockchain to verify payment and mints the NFT.",
+            "description": "Use this ONLY AFTER the user gives you a transaction hash. It checks the blockchain to verify payment and text mints the NFT.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -122,44 +112,35 @@ sdk_tools = [
     {
         "type": "function",
         "function": {
-            "name": "get_deployment_instructions",
-            "description": "Call this when a user wants to deploy a new collection. Returns the required deployment fee and the wallet address to send it to.",
-            "parameters": {"type": "object", "properties": {}, "required": []}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "verify_deployment_payment_and_deploy",
-            "description": "Call this ONLY after the user has paid the deployment fee AND provided their transaction hash. Verifies payment and deploys the NFT collection smart contract.",
+            "name": "deploy_custom_collection",
+            "description": "Deploys a brand new NFT collection smart contract to the launchpad.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "transaction_hash": {"type": "string"},
                     "collection_name": {"type": "string"},
                     "symbol": {"type": "string"},
                     "price_eth": {"type": "number"},
                     "supply": {"type": "integer"},
                     "description": {"type": "string"}
                 },
-                "required": ["transaction_hash", "collection_name", "symbol", "price_eth", "supply", "description"]
+                "required": ["collection_name", "symbol", "price_eth", "supply", "description"]
             }
         }
     }
 ]
 
-async def chat_with_agent(user_input: str, conversation_history: list):
+def chat_with_agent(user_input: str, conversation_history: list):
     private_key = os.environ.get("AGENT_PRIVATE_KEY")
     if not private_key:
         yield "🧠 *System Alert: I am currently running in 'Mock Mode' because my creator hasn't added the AGENT_PRIVATE_KEY environment variable to Vercel yet! Once they add it, I will be a fully-functional AI using OpenGradient's native SDK!*"
         return
         
     try:
-        # 1. Initialize OpenGradient LLM Client
-        llm = og.LLM(private_key=private_key)
+        # 1. Initialize OpenGradient Native Client
+        client = og.Client(private_key=private_key)
         
         # 1a. Ensure x402 Permit2 Token Approvals 
-        llm.ensure_opg_approval(opg_amount=5.0)
+        client.llm.ensure_opg_approval(opg_amount=50.0)
         
         messages = [{"role": "system", "content": get_system_prompt()}]
         for msg in conversation_history:
@@ -168,7 +149,7 @@ async def chat_with_agent(user_input: str, conversation_history: list):
         
         MAX_ITERATIONS = 3
         for _ in range(MAX_ITERATIONS):
-            chat_stream = await llm.chat(
+            chat_stream = client.llm.chat(
                 model=og.TEE_LLM.GPT_4_1_2025_04_14,
                 messages=messages,
                 tools=sdk_tools,
@@ -181,7 +162,7 @@ async def chat_with_agent(user_input: str, conversation_history: list):
             content_buffer = ""
             
             # 4. Handle Streaming Response
-            async for chunk in chat_stream:
+            for chunk in chat_stream:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -234,10 +215,8 @@ async def chat_with_agent(user_input: str, conversation_history: list):
                     tool_result = get_payment_instructions(**args)
                 elif func_name == "verify_payment_and_mint_nft":
                     tool_result = verify_payment_and_mint_nft(**args)
-                elif func_name == "get_deployment_instructions":
-                    tool_result = get_deployment_instructions()
-                elif func_name == "verify_deployment_payment_and_deploy":
-                    tool_result = verify_deployment_payment_and_deploy(**args)
+                elif func_name == "deploy_custom_collection":
+                    tool_result = register_new_collection(**args)
                 else:
                     tool_result = "{'error': 'Unknown tool called'}"
                     
@@ -254,4 +233,22 @@ async def chat_with_agent(user_input: str, conversation_history: list):
             messages.extend(tool_messages_to_add)
             
     except Exception as e:
-        yield f"\nOops! My exact native AI SDK ran into an error: {str(e)}"
+        error_str = str(e) + " " + repr(e)
+        if "402" in error_str or "Payment Required" in error_str or "429" in error_str or "Client error '4" in error_str:
+            yield "\n🧠 *Demo Mode Activated*: OpenAI credits are needed for AI responses, but your NFT deployment tools still work! 💪\n\n"
+            yield "I can help you with:\n"
+            yield "✅ Deploy NFT collections\n"
+            yield "✅ Check collection info\n"
+            yield "✅ Get deployment instructions\n"
+            yield "✅ Verify payments and mint NFTs\n\n"
+            yield f"What would you like to do? (You asked: {user_input})\n"
+        elif "500" in error_str or "Internal Server Error" in error_str or "temporarily unavailable" in error_str.lower():
+            yield "\n⚠️ *API Server Temporarily Unavailable*: The AI service is experiencing issues, but your NFT deployment tools still work! 💪\n\n"
+            yield "I can help you with:\n"
+            yield "✅ Deploy NFT collections\n"
+            yield "✅ Check collection info\n"
+            yield "✅ Get deployment instructions\n"
+            yield "✅ Verify payments and mint NFTs\n\n"
+            yield f"What would you like to do? (You asked: {user_input})\n"
+        else:
+            yield f"\nOops! My exact native AI SDK ran into an error: {str(e)}"
